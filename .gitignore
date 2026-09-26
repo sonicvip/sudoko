@@ -1,0 +1,4 @@
+ad/out/*.wav
+ad/out/prev_*.png
+ad/out/contact.png
+__pycache__/
