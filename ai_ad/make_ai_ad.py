@@ -82,7 +82,8 @@ def split_vo():
     for k in range(N - 1):
         exp = total * lens[k]
         best = min((s for s in sil if (s[0] + s[1]) / 2 > last + .5),
-                   key=lambda s: 0 if s[0] <= exp <= s[1] else min(abs(s[0] - exp), abs(s[1] - exp)), default=None)
+                   key=lambda s: (0 if s[0] <= exp <= s[1] else min(abs(s[0] - exp), abs(s[1] - exp))) - 1.5 * (s[1] - s[0]),
+                   default=None)  # prefer long (sentence-end) pauses
         c = (best[0] + best[1]) / 2 if best and abs((best[0] + best[1]) / 2 - exp) < 3.0 else exp
         cuts.append(c); last = c
     cuts.append(total)
@@ -158,6 +159,7 @@ def scaled(layer, s):
 def blit(arr, layer, cx, cy, alpha=1.0, scale=1.0, rgb_split=0):
     """Alpha-composite an RGBA float layer centred at (cx, cy) onto arr (float 0..255)."""
     if alpha <= .005 or scale <= .02: return
+    scale *= min(1.0, (W - 110) / max(1, layer.shape[1] - 100))  # auto-fit to frame width (100 = side margins)
     L = scaled(layer, scale)
     h, w = L.shape[:2]
     x, y = int(cx - w / 2), int(cy - h / 2)
@@ -229,6 +231,7 @@ yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
 _r = np.sqrt(((xx - W / 2) / W) ** 2 + ((yy - H / 2) / H) ** 2)
 VIGNETTE = np.clip(1.22 - _r * 1.3, 0.28, 1.0)[..., None].astype(np.float32)
 GRAIN = [rng.normal(0, 4.5, (H // 2, W // 2)).astype(np.float32) for _ in range(6)]
+SCRIM = (1 - .5 * np.exp(-((np.arange(H, dtype=np.float32) - 480) / 520) ** 2))[:, None, None]
 del _r
 
 def grain(i):
@@ -441,6 +444,7 @@ def scene(k, t, extra_zoom=1.0, extra_dx=0.0, frame_i=0):
     if k == 5:  # tension: desaturate a touch, periodic glitch
         g = arr.mean(2, keepdims=True); arr = arr * .75 + g * .25
     arr = bloom(arr, .32 if k != 7 else .45)
+    arr *= SCRIM  # keep headlines legible on bright shots
     light_leak(arr, t + k * 3, col, .16 if k not in (6, 7) else .26)
     particles(arr, t, col, .7)
     hud(arr, t, col, .55)
