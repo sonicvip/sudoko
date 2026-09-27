@@ -4,3 +4,4 @@ ad/out/contact.png
 __pycache__/
 ai_ad/out/*.wav
 ai_ad/out/prev_*.png
+ai_ad/out/contact.png
